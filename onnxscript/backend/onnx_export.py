@@ -110,16 +110,40 @@ def _get_const_repr(const_node):
 
 
 def _rename_variable(name: ValueInfoProto | str) -> Optional[str]:
-    """Renames all names equal to a python keyword."""
+    """Renames all names that are not valid Python variable names."""
     if isinstance(name, ValueInfoProto):
         # Handle graph/function input/output uniformly
-        name = name.name
-    assert isinstance(name, str)
-    if name in kwlist:
-        return f"r_{name}"
-    if name == "":
+        name_str = name.name
+    else:
+        name_str = name
+    assert isinstance(name_str, str)
+
+    if name_str == "":
         return None
-    return name
+
+    if name_str in kwlist:
+        name_str = f"var_{name_str}"
+
+    # If it's now a valid Python identifier, return it
+    if name_str.isidentifier():
+        return name_str
+
+    # If not, iterate over each character, replacing it with "_" if needed
+    name_as_chars = list(name_str)
+
+    for i in range(len(name_as_chars)):
+        # Whether a character is valid differs depending on whether it is inital
+        # or not, so incremently make sure all prefixes of the string are valid.
+        if not name_str[:i].isidentifier():
+            name_as_chars[i] = '_'
+
+    name_str = ''.join(name_as_chars)
+
+    # Avoid a variable name starting with an underscore
+    if name_str.startswith('_'):
+        name_str = 'var' + name_str
+
+    return name_str
 
 
 def _translate_type(onnx_type):
