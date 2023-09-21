@@ -110,7 +110,13 @@ def _get_const_repr(const_node):
 
 
 def _rename_variable(name: ValueInfoProto | str) -> Optional[str]:
-    """Renames all names that are not valid Python variable names."""
+    """Converts given name into a valid python variable names.
+    Handles names that clash with python keywords and common issues seen in ONNX models:
+    * Identifiers like "5" (that do not start with an alpha character)
+    * Identifiers that contain a dot like "layers.0.foo"
+    This is a simple heuristic, and doesn't guarantee it avoids name-clashes.
+    Empty names, which are special in ONNX, are not renamed. A None is returned.
+    """
     if isinstance(name, ValueInfoProto):
         # Handle graph/function input/output uniformly
         name_str = name.name
@@ -122,20 +128,20 @@ def _rename_variable(name: ValueInfoProto | str) -> Optional[str]:
         return None
 
     if name_str in kwlist:
-        name_str = f"var_{name_str}"
+        name_str = f"r_{name_str}"
 
     # If it's now a valid Python identifier, return it
     if name_str.isidentifier():
         return name_str
 
-    # If not, iterate over each character, replacing it with "_" if needed
+    # If not, iterate over each character, replacing it with "__" if needed
     name_as_chars = list(name_str)
 
     for i in range(len(name_as_chars)):
         # Whether a character is valid differs depending on whether it is inital
         # or not, so incremently make sure all prefixes of the string are valid.
         if not name_str[:i].isidentifier():
-            name_as_chars[i] = '_'
+            name_as_chars[i] = '__'
 
     name_str = ''.join(name_as_chars)
 
@@ -206,6 +212,7 @@ def _attribute_value(attr: onnx.AttributeProto):
 
 
 def _python_make_node_name(domain, version, name, node=False):
+    name = _rename_variable(name)
     if node:
         if version is None:
             version = 1
