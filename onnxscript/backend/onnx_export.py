@@ -140,14 +140,14 @@ def _rename_variable(name: ValueInfoProto | str) -> Optional[str]:
     for i in range(len(name_as_chars)):
         # Whether a character is valid differs depending on whether it is inital
         # or not, so incremently make sure all prefixes of the string are valid.
-        if not name_str[:i].isidentifier():
-            name_as_chars[i] = '__'
+        if not ''.join(name_as_chars[:i+1]).isidentifier():
+            name_as_chars[i] = '_'
 
     name_str = ''.join(name_as_chars)
 
     # Avoid a variable name starting with an underscore
     if name_str.startswith('_'):
-        name_str = 'var' + name_str
+        name_str = f'r{name_str}'
 
     return name_str
 
@@ -225,7 +225,7 @@ class Exporter:
         self.constants: dict[str, str] = {}
 
     def _rename_variable_s(self, name):
-        """Renames all names equal to a python keyword."""
+        """Renames all names that are invalid Python variable names or are keywords."""
         return str(self._rename_variable(name))
 
     def _rename_domain(self, domain: str) -> str:
